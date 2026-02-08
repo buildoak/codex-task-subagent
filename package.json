@@ -4,7 +4,7 @@
   "description": "Use OpenAI Codex as a task subagent — cross-model verification for AI coding agents",
   "type": "module",
   "scripts": {
-    "codex": "tsx src/codex-agent.ts"
+    "codex": "bun run src/codex-agent.ts"
   },
   "dependencies": {
     "@openai/codex-sdk": "^0.98.0"

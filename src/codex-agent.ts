@@ -2,11 +2,11 @@
  * codex-agent.ts — General-purpose Codex subagent
  *
  * Usage:
- *   npx tsx src/codex-agent.ts "Your prompt here"
- *   npx tsx src/codex-agent.ts --sandbox workspace-write "Fix the tests"
- *   npx tsx src/codex-agent.ts --cwd /path/to/repo "Analyze this"
- *   npx tsx src/codex-agent.ts --timeout 300000 "Big task"
- *   npx tsx src/codex-agent.ts --model gpt-5.3-codex --reasoning xhigh "Deep analysis"
+ *   bun run src/codex-agent.ts "Your prompt here"
+ *   bun run src/codex-agent.ts --sandbox workspace-write "Fix the tests"
+ *   bun run src/codex-agent.ts --cwd /path/to/repo "Analyze this"
+ *   bun run src/codex-agent.ts --timeout 300000 "Big task"
+ *   bun run src/codex-agent.ts --model gpt-5.3-codex --reasoning xhigh "Deep analysis"
  *
  * Output: JSON to stdout
  *   { "success": true, "response": "...", "items": [...] }
@@ -39,7 +39,7 @@ const DEFAULT_SANDBOX: SandboxMode = "read-only";
 const DEFAULT_MODEL = "gpt-5.3-codex";
 const DEFAULT_REASONING: ModelReasoningEffort = "medium";
 const VALID_REASONING: ModelReasoningEffort[] = ["minimal", "low", "medium", "high", "xhigh"];
-const HELP_TEXT = `Usage: npx tsx src/codex-agent.ts [options] "prompt"
+const HELP_TEXT = `Usage: bun run src/codex-agent.ts [options] "prompt"
 
 Options:
   -s, --sandbox <mode>     Sandbox mode: read-only (default), workspace-write, danger-full-access
@@ -50,11 +50,11 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  npx tsx src/codex-agent.ts "What does this repo do?"
-  npx tsx src/codex-agent.ts --sandbox workspace-write "Fix the failing tests"
-  npx tsx src/codex-agent.ts --cwd /path/to/repo "Analyze architecture"
-  npx tsx src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
-  npx tsx src/codex-agent.ts -r xhigh "Deep analysis of edge cases"`;
+  bun run src/codex-agent.ts "What does this repo do?"
+  bun run src/codex-agent.ts --sandbox workspace-write "Fix the failing tests"
+  bun run src/codex-agent.ts --cwd /path/to/repo "Analyze architecture"
+  bun run src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
+  bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"`;
 
 type ParseResult =
   | {
