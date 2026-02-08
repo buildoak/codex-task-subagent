@@ -1,12 +1,14 @@
 # codex-task-subagent
 
-Use [OpenAI Codex](https://platform.openai.com/docs/guides/codex) as a task subagent from any AI coding agent. A second pair of eyes, different model, different blind spots.
+Use [OpenAI Codex](https://platform.openai.com/docs/guides/codex) as a task subagent for Claude Code. Claude Code with Opus 4.6 is already a prompt master via the subagents pattern, which makes it an ideal orchestrator for Codex.
 
 ## The Idea
 
+The core value is cross-model verification: Codex gives you an additional pair of eyes with a different mindset. Models trained differently fail differently, so a second model catches different classes of bugs, logic gaps, and risky assumptions. In practice, this is the real 10x enabler.
+
 **codex-task-subagent** is a self-contained skill + CLI. The distributable unit is `skill/codex-subagent/`: it contains `SKILL.md`, runtime source, references, and runtime dependencies.
 
-### Nested Subagents: The 10x Pattern
+### Nested Subagents: The 10x Pattern (Architectural Bonus)
 
 Claude Code already has subagents via the Task tool. This project adds Codex as a subagent inside Claude workflows:
 
@@ -18,10 +20,10 @@ You (human)
               └── Codex reads files, runs commands, analyzes
 ```
 
-Why this matters:
-- 10x productivity: Claude writes, Codex verifies, same session
-- 10x experience: cross-model agreement before shipping
-- 10x context preservation: Claude delegates focused checks to Codex
+Why this helps:
+- Smooth delegation: Claude writes, Codex verifies, same session
+- Better confidence: cross-model agreement before shipping
+- Context preservation: Claude delegates focused checks to Codex
 
 ## Repository Structure
 
@@ -75,21 +77,16 @@ bun run src/codex-agent.ts --sandbox workspace-write "Fix failing tests"
 
 ## Cross-Model Verification Pattern
 
-1. Primary agent (Claude, GPT, etc.) writes code
+1. Claude Code writes code
 2. Codex reviews with fresh-model analysis
 3. Compare perspectives and patch issues
 4. Re-run Codex for pre-ship confidence
 
 Different models catch different classes of mistakes.
 
-## Roadmap
+## Future Vision
 
-- [ ] Multi-turn sessions (iterative refinement)
-- [ ] Programmatic TypeScript API (import, not just CLI)
-- [ ] MCP server mode (use from any MCP-compatible agent)
-- [ ] Integration guides for Claude Code, Cursor, Windsurf
-- [ ] Result formatting options (markdown, structured reports)
-- [ ] Progressive disclosure examples library
+We are pursuing deeper research into best practices for multi-agent collaboration. The focus is how different models complement each other, which delegation patterns work best, and when to use which model for maximum reliability and speed. Over time, this project aims to turn those findings into practical, repeatable operating patterns for teams.
 
 ## License
 
