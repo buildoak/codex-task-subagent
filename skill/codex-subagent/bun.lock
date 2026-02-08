@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "codex-subagent",
+      "dependencies": {
+        "@openai/codex-sdk": "^0.98.0",
+      },
+    },
+  },
+  "packages": {
+    "@openai/codex-sdk": ["@openai/codex-sdk@0.98.0", "", {}, "sha512-TbPgrBpuSNMJyOXys0HNsh6UoP5VIHu1fVh2KDdACi5XyB0vuPtzBZC+qOsxHz7WXEQPFlomPLyxS6JnE5Okmg=="],
+  }
+}
