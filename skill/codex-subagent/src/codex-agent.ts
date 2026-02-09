@@ -47,6 +47,8 @@ Options:
   -r, --reasoning <level>  Reasoning effort: minimal, low, medium (default), high, xhigh
   -C, --cwd <dir>          Working directory for Codex
   -t, --timeout <ms>       Positive timeout in milliseconds (default: 120000)
+  -n, --network            Enable network access (for npm install, web requests, etc.)
+  -f, --full               Full access mode: danger-full-access sandbox + network enabled
   -h, --help               Show this help
 
 Examples:
@@ -54,7 +56,8 @@ Examples:
   bun run src/codex-agent.ts --sandbox workspace-write "Fix the failing tests"
   bun run src/codex-agent.ts --cwd /path/to/repo "Analyze architecture"
   bun run src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
-  bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"`;
+  bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"
+  bun run src/codex-agent.ts --full "Install deps and implement feature"`;
 
 type ParseResult =
   | {
@@ -65,6 +68,7 @@ type ParseResult =
       reasoning: ModelReasoningEffort;
       cwd?: string;
       timeout: number;
+      network: boolean;
     }
   | { kind: "help" }
   | { kind: "invalid"; error: string };
@@ -81,6 +85,8 @@ function parseCliArgs(): ParseResult {
         reasoning: { type: "string", short: "r" },
         cwd: { type: "string", short: "C" },
         timeout: { type: "string", short: "t" },
+        network: { type: "boolean", short: "n" },
+        full: { type: "boolean", short: "f" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -96,9 +102,14 @@ function parseCliArgs(): ParseResult {
       return { kind: "invalid", error: "A prompt is required." };
     }
 
-    const sandbox = (values.sandbox as SandboxMode) || DEFAULT_SANDBOX;
+    // --full overrides sandbox to danger-full-access and enables network
+    const fullMode = values.full === true;
+    const sandbox = fullMode
+      ? "danger-full-access"
+      : (values.sandbox as SandboxMode) || DEFAULT_SANDBOX;
     const model = values.model || DEFAULT_MODEL;
     const reasoning = (values.reasoning as ModelReasoningEffort) || DEFAULT_REASONING;
+    const network = fullMode || values.network === true;
 
     let timeout = DEFAULT_TIMEOUT;
     if (values.timeout !== undefined) {
@@ -132,6 +143,7 @@ function parseCliArgs(): ParseResult {
       reasoning,
       cwd: values.cwd,
       timeout,
+      network,
     };
   } catch (err) {
     return {
@@ -160,7 +172,8 @@ async function runCodex(
   model: string,
   reasoning: ModelReasoningEffort,
   cwd?: string,
-  timeout?: number
+  timeout?: number,
+  network?: boolean
 ): Promise<Output> {
   const codex = new Codex();
   const thread = codex.startThread({
@@ -169,6 +182,7 @@ async function runCodex(
     modelReasoningEffort: reasoning,
     workingDirectory: cwd,
     skipGitRepoCheck: true,
+    networkAccessEnabled: network,
   });
 
   // Race against timeout
@@ -226,7 +240,8 @@ async function main(): Promise<void> {
     args.model,
     args.reasoning,
     args.cwd,
-    args.timeout
+    args.timeout,
+    args.network
   );
   output(result);
 }

@@ -24,7 +24,6 @@ description: |
   - Architecture planning (Claude is better — Codex lacks conversation context)
   - Creative writing, documentation, or prose
   - Tasks requiring conversation history (Codex sees only the prompt)
-  - Research or web-based tasks (Codex has no MCP access)
 ---
 
 # Codex Subagent
@@ -55,35 +54,43 @@ Spawn OpenAI Codex as an independent subagent from Claude Code. Same pattern as 
 - **Architecture planning** — Codex has no conversation context
 - **Creative/writing tasks** — Claude's strength
 - **Tasks needing chat history** — Codex sees only the prompt
-- **Research with MCP** — Codex can't access your servers
 - **Simple boilerplate** — overhead not worth it
 
 ---
 
 ## Invocation
 
-**Skill location:** `codex-subagent/` (this folder)
+**Skill location:** `/Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-subagent/`
 
 ### Prerequisites (first run only)
 
 ```bash
-bun install
+cd /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-subagent && bun install
 ```
 
-### Basic Usage
+### Basic Usage (absolute path, no cd needed)
 
 ```bash
-bun run src/codex-agent.ts "Your prompt here"
+bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-subagent/src/codex-agent.ts "Your prompt here"
 ```
 
 ### With Options
 
 ```bash
-bun run src/codex-agent.ts \
+bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-subagent/src/codex-agent.ts \
   --cwd /path/to/repo \
   --sandbox workspace-write \
   --reasoning high \
   "Implement the feature described in SPEC.md"
+```
+
+### Full Access Mode (for implementation tasks)
+
+```bash
+bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-subagent/src/codex-agent.ts \
+  --full \
+  --cwd /path/to/repo \
+  "Install dependencies and implement the feature"
 ```
 
 ---
@@ -97,6 +104,15 @@ bun run src/codex-agent.ts \
 | `--reasoning` | `-r` | `minimal`, `low`, `medium`, `high`, `xhigh` | `medium` | Higher = deeper analysis, slower, costlier |
 | `--cwd` | `-C` | path | current dir | Point at the repo to analyze |
 | `--timeout` | `-t` | milliseconds | 120000 | Increase for large codebases |
+| `--network` | `-n` | boolean | false | Enable network access (npm install, web requests) |
+| `--full` | `-f` | boolean | false | Full access: `danger-full-access` + network enabled |
+
+### Quick Mode Selection
+
+- **Review/audit:** Default (read-only, no network)
+- **Write files:** `--sandbox workspace-write`
+- **Install deps + write:** `--sandbox workspace-write --network`
+- **Full trust:** `--full` (danger-full-access + network)
 
 ---
 
@@ -259,10 +275,19 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 
 ---
 
+## MCP Servers
+
+Codex has Exa configured globally in `~/.codex/config.toml`. This enables web search during tasks when needed.
+
+**Requirement:** `EXA_API_KEY` must be set in your environment.
+
+---
+
 ## Files
 
 - **Agent:** `src/codex-agent.ts`
 - **Skill:** `SKILL.md`
+- **Codex config:** `~/.codex/config.toml`
 
 ## Progressive Disclosure
 
