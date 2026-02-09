@@ -103,7 +103,7 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 | `--model` | `-m` | Any Codex model string | `gpt-5.3-codex` | Passed through to SDK |
 | `--reasoning` | `-r` | `minimal`, `low`, `medium`, `high`, `xhigh` | `medium` | Higher = deeper analysis, slower, costlier |
 | `--cwd` | `-C` | path | current dir | Point at the repo to analyze |
-| `--timeout` | `-t` | milliseconds | 120000 | Increase for large codebases |
+| `--timeout` | `-t` | milliseconds | reasoning-scaled | 2min (minimal-medium), 20min (high), 40min (xhigh) |
 | `--network` | `-n` | boolean | false | Enable network access (npm install, web requests) |
 | `--full` | `-f` | boolean | false | Full access: `danger-full-access` + network enabled |
 

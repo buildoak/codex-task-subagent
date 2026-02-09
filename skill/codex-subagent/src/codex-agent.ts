@@ -34,11 +34,23 @@ type Output = CodexResult | CodexError;
 
 // --- Config ---
 
-const DEFAULT_TIMEOUT = 120_000; // 2 minutes (matches Claude Code Bash default)
 const DEFAULT_SANDBOX: SandboxMode = "read-only";
 const DEFAULT_MODEL = "gpt-5.3-codex";
 const DEFAULT_REASONING: ModelReasoningEffort = "medium";
 const VALID_REASONING: ModelReasoningEffort[] = ["minimal", "low", "medium", "high", "xhigh"];
+
+// Timeout defaults scaled by reasoning effort
+const TIMEOUT_BY_REASONING: Record<ModelReasoningEffort, number> = {
+  minimal: 120_000,    // 2 min
+  low: 120_000,        // 2 min
+  medium: 120_000,     // 2 min
+  high: 1_200_000,     // 20 min
+  xhigh: 2_400_000,    // 40 min
+};
+
+function getDefaultTimeout(reasoning: ModelReasoningEffort): number {
+  return TIMEOUT_BY_REASONING[reasoning] ?? 120_000;
+}
 const HELP_TEXT = `Usage: bun run src/codex-agent.ts [options] "prompt"
 
 Options:
@@ -46,7 +58,7 @@ Options:
   -m, --model <name>       Model string passed directly to Codex (default: gpt-5.3-codex)
   -r, --reasoning <level>  Reasoning effort: minimal, low, medium (default), high, xhigh
   -C, --cwd <dir>          Working directory for Codex
-  -t, --timeout <ms>       Positive timeout in milliseconds (default: 120000)
+  -t, --timeout <ms>       Positive timeout in ms (default: 2min/2min/2min/20min/40min by reasoning)
   -n, --network            Enable network access (for npm install, web requests, etc.)
   -f, --full               Full access mode: danger-full-access sandbox + network enabled
   -h, --help               Show this help
@@ -111,7 +123,7 @@ function parseCliArgs(): ParseResult {
     const reasoning = (values.reasoning as ModelReasoningEffort) || DEFAULT_REASONING;
     const network = fullMode || values.network === true;
 
-    let timeout = DEFAULT_TIMEOUT;
+    let timeout = getDefaultTimeout(reasoning);
     if (values.timeout !== undefined) {
       const timeoutText = values.timeout.trim();
       if (!/^\d+$/.test(timeoutText)) {
@@ -186,7 +198,7 @@ async function runCodex(
   });
 
   // Race against timeout
-  const timeoutMs = timeout || DEFAULT_TIMEOUT;
+  const timeoutMs = timeout || getDefaultTimeout(reasoning);
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error("TIMEOUT")), timeoutMs);
   });
