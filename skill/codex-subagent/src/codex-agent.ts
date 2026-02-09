@@ -43,7 +43,7 @@ const VALID_REASONING: ModelReasoningEffort[] = ["minimal", "low", "medium", "hi
 const TIMEOUT_BY_REASONING: Record<ModelReasoningEffort, number> = {
   minimal: 120_000,    // 2 min
   low: 120_000,        // 2 min
-  medium: 120_000,     // 2 min
+  medium: 600_000,     // 10 min
   high: 1_200_000,     // 20 min
   xhigh: 2_400_000,    // 40 min
 };
