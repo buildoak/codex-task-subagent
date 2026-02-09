@@ -27,11 +27,13 @@ Use when: 1-2 subagent steps, simple pipeline, single-domain work.
 
 ### 2) DEEP Mode
 
+Claude cannot spawn subagents inside subagents — but it can spawn Codex from anywhere. This makes Codex the key to multi-level delegation.
+
 ```
 Main Thread
-    └── Opus Coordinator Subagent
-            ├── Worker 1 (Claude or Codex)
-            ├── Worker 2 (Claude or Codex)
+    └── Claude Coordinator Subagent
+            ├── Codex Worker 1
+            ├── Codex Worker 2
             └── Synthesized result → Main Thread
 ```
 
