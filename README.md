@@ -1,92 +1,137 @@
 # codex-task-subagent
 
-Use [OpenAI Codex](https://platform.openai.com/docs/guides/codex) as a task subagent for Claude Code. Claude Code with Opus 4.6 is already a prompt master via the subagents pattern, which makes it an ideal orchestrator for Codex.
+Use OpenAI Codex as a task subagent for Claude Code workflows.
 
 ## The Idea
 
-The core value is cross-model verification: Codex gives you an additional pair of eyes with a different mindset. Models trained differently fail differently, so a second model catches different classes of bugs, logic gaps, and risky assumptions. In practice, this is the real 10x enabler.
+This project is about cross-model verification: one model implements, another model challenges assumptions and catches different failure modes.
 
-**codex-task-subagent** is a self-contained skill + CLI. The distributable unit is `skill/codex-subagent/`: it contains `SKILL.md`, runtime source, references, and runtime dependencies.
+The most practical setup is ChatGPT Pro/Plus with Codex access, then orchestrate Codex from Claude as a specialized worker. In practice, this is usually the most logical and cost-effective path to multi-model quality control.
 
-### Nested Subagents: The 10x Pattern (Architectural Bonus)
+`codex-task-subagent` ships as a self-contained skill + CLI in `skill/codex-subagent/`.
 
-Claude Code already has subagents via the Task tool. This project adds Codex as a subagent inside Claude workflows:
+## Orchestration Patterns
 
-```
-You (human)
-  └── Claude Code (orchestrator)
-        ├── Claude subagent (Task tool — writes code)
-        └── Codex subagent (this skill — verifies code)
-              └── Codex reads files, runs commands, analyzes
-```
+These are proven patterns from the digital employee protocol.
 
-Why this helps:
-- Smooth delegation: Claude writes, Codex verifies, same session
-- Better confidence: cross-model agreement before shipping
-- Context preservation: Claude delegates focused checks to Codex
-
-## Repository Structure
+### 1) NORMAL Mode
 
 ```
-codex-task-subagent/
-├── skill/
-│   └── codex-subagent/
-│       ├── SKILL.md
-│       ├── src/
-│       │   └── codex-agent.ts
-│       ├── references/
-│       │   ├── examples.md
-│       │   └── integration-patterns.md
-│       ├── package.json
-│       └── tsconfig.json
-├── README.md
-├── LICENSE
-└── .gitignore
+Main Thread (coordinator)
+    ├── Claude subagent (Task tool)
+    ├── Codex subagent (this skill)
+    └── Results synthesized back to main
 ```
+
+Use when: 1-2 subagent steps, simple pipeline, single-domain work.
+
+### 2) DEEP Mode
+
+```
+Main Thread
+    └── Opus Coordinator Subagent
+            ├── Worker 1 (Claude or Codex)
+            ├── Worker 2 (Claude or Codex)
+            └── Synthesized result → Main Thread
+```
+
+Use when: 3+ sequential steps, multi-model pipelines, complex chains.
+
+### 3) The 10x Pattern
+
+```
+Codex (high effort) → Claude subagent (audit) → fixes → done
+```
+
+Different blind spots = higher confidence than either model alone.
+
+### 4) Parallel Execution
+
+```
+Claude (main) → [Codex 1, Codex 2, Codex 3] → aggregate results
+```
+
+Use when independent tasks can run concurrently (module review, parallel implementation, compare-and-merge analysis).
+
+## CLI Flags
+
+### Help Output
+
+```text
+Usage: bun run src/codex-agent.ts [options] "prompt"
+
+Options:
+  -s, --sandbox <mode>     Sandbox mode: read-only (default), workspace-write, danger-full-access
+  -m, --model <name>       Model string passed directly to Codex (default: gpt-5.3-codex)
+  -r, --reasoning <level>  Reasoning effort: minimal, low, medium (default), high, xhigh
+  -C, --cwd <dir>          Working directory for Codex
+  -t, --timeout <ms>       Positive timeout in milliseconds (default: 120000)
+  -n, --network            Enable network access (for npm install, web requests, etc.)
+  -f, --full               Full access mode: danger-full-access sandbox + network enabled
+  -h, --help               Show this help
+
+Examples:
+  bun run src/codex-agent.ts "What does this repo do?"
+  bun run src/codex-agent.ts --sandbox workspace-write "Fix the failing tests"
+  bun run src/codex-agent.ts --cwd /path/to/repo "Analyze architecture"
+  bun run src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
+  bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"
+  bun run src/codex-agent.ts --full "Install deps and implement feature"
+```
+
+### Quick Mode Selection
+
+| Goal | Command |
+|---|---|
+| Review only | default (`read-only`, no network) |
+| Implementation | `--sandbox workspace-write` |
+| Implementation + deps | `--sandbox workspace-write --network` |
+| Full trust | `--full` |
+
+## MCP Servers
+
+Codex supports MCP servers through `~/.codex/config.toml`.
+
+Example using Exa for web search:
+
+```toml
+[mcp_servers.exa]
+command = "npx"
+args = ["-y", "exa-mcp-server"]
+env = { EXA_API_KEY = "your_exa_api_key" }
+```
+
+After configuring, restart Codex/Claude sessions so the MCP server is discovered.
 
 ## Installation
 
-### 1) As a Claude Code Skill (Recommended)
+`bun install` is required in both installation paths.
+
+### 1) Install as a Claude Code skill (recommended)
 
 ```bash
-cp -r skill/codex-subagent /path/to/project/.claude/skills/ && cd /path/to/project/.claude/skills/codex-subagent && bun install
-```
-
-Claude Code will auto-discover `codex-subagent` from `.claude/skills/codex-subagent/SKILL.md`.
-
-### 2) As a Standalone CLI
-
-```bash
-git clone https://github.com/buildoak/codex-task-subagent.git && cd codex-task-subagent/skill/codex-subagent && bun install && bun run src/codex-agent.ts "prompt"
-```
-
-Requires Bun and `OPENAI_API_KEY`.
-
-## Claude Code Self-Install
-
-Claude Code can install this skill autonomously by reading this README and executing the install command in your project. Because all runtime files live under `skill/codex-subagent/`, installation is just copy + `bun install`.
-
-## Usage
-
-```bash
+cp -r skill/codex-subagent /path/to/project/.claude/skills/
 cd /path/to/project/.claude/skills/codex-subagent
-bun run src/codex-agent.ts "Review this repo for security issues"
-bun run src/codex-agent.ts --cwd /path/to/repo -r high "Review auth flow for vulnerabilities"
-bun run src/codex-agent.ts --sandbox workspace-write "Fix failing tests"
+bun install
 ```
 
-## Cross-Model Verification Pattern
+### 2) Use as a standalone CLI
 
-1. Claude Code writes code
-2. Codex reviews with fresh-model analysis
-3. Compare perspectives and patch issues
-4. Re-run Codex for pre-ship confidence
+```bash
+git clone https://github.com/buildoak/codex-task-subagent.git
+cd codex-task-subagent/skill/codex-subagent
+bun install
+bun run src/codex-agent.ts "your prompt"
+```
 
-Different models catch different classes of mistakes.
+## Proven Patterns
 
-## Future Vision
-
-We are pursuing deeper research into best practices for multi-agent collaboration. The focus is how different models complement each other, which delegation patterns work best, and when to use which model for maximum reliability and speed. Over time, this project aims to turn those findings into practical, repeatable operating patterns for teams.
+What consistently works in production:
+- Keep main-thread prompts short and role-specific.
+- Use Codex for implementation/review passes, then route back to Claude for synthesis.
+- Escalate to DEEP mode when chains exceed 2 steps.
+- Use `--network` only when dependency install or web access is required.
+- Use `--full` only in trusted repos and bounded tasks.
 
 ## License
 
