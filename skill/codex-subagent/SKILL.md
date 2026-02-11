@@ -107,6 +107,7 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 | `--add-dir` | `-d` | path (repeatable) | none | Additional writable dirs for `workspace-write` |
 | `--network` | `-n` | boolean | false | Enable network access (npm install, web requests) |
 | `--full` | `-f` | boolean | false | Full access: `danger-full-access` + network enabled |
+| `--browser` | `-b` | boolean | false | Enable browser MCP servers (agent-browser + spectacles) |
 
 ### Quick Mode Selection
 
@@ -115,6 +116,8 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 - **Cross-directory writes:** `--sandbox workspace-write --add-dir /sibling/path`
 - **Install deps + write:** `--sandbox workspace-write --network`
 - **Full trust:** `--full` (danger-full-access + network)
+- **Browser tasks:** `--browser` (enables agent-browser + spectacles MCPs)
+- **Browser + write:** `--browser --sandbox workspace-write`
 
 > **Cross-directory trap:** `workspace-write` restricts writes to the `--cwd` subtree. If Codex needs to write to sibling directories (e.g., both `centerpiece/` and `data/`), either set `--cwd` to the common parent, use `--add-dir` for each extra directory, or use `--full`.
 
@@ -283,13 +286,21 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 
 Codex has the following MCP servers configured globally in `~/.codex/config.toml`:
 
+**Always enabled:**
+
 | Server | Purpose | Key Tools |
 |--------|---------|-----------|
 | `exa` | Web search | Exa search API |
-| `agent-browser` | Browser automation | Page navigation, screenshots |
 | `pratchett-docs` | Knowledge base search | `search(query, limit)`, `list_docs(type, status, domain, tag, limit)` |
 | `chats` | ChatGPT history | `search_turns`, `search_conversations`, `get_turn`, `get_conversation_metadata` |
 | `tech-ledger` | Tech mentions | `search_tech`, `get_tech_card`, `list_domains` |
+
+**Enabled via `--browser` flag (disabled by default):**
+
+| Server | Purpose | Key Tools |
+|--------|---------|-----------|
+| `agent-browser` | Browser automation (Playwright) | `browser_navigate`, `browser_click`, `browser_screenshot`, `browser_fill`, etc. |
+| `spectacles` | Visual verification pipeline | `spectacles_capture`, `spectacles_anchor`, `spectacles_verify`, `spectacles_extract_dna` |
 
 **Requirement:** `EXA_API_KEY` must be set in your environment for Exa. The pratchett-docs, chats, and tech-ledger servers use the pratchett-os venv python.
 

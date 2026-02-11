@@ -13,7 +13,7 @@
  *   { "success": false, "error": "...", "code": "..." }
  */
 
-import { Codex, type ModelReasoningEffort, type SandboxMode } from "@openai/codex-sdk";
+import { Codex, type CodexOptions, type ModelReasoningEffort, type SandboxMode } from "@openai/codex-sdk";
 import { parseArgs } from "node:util";
 
 // --- Types ---
@@ -62,6 +62,7 @@ Options:
   -d, --add-dir <path>     Additional writable directory (repeatable, workspace-write only)
   -n, --network            Enable network access (for npm install, web requests, etc.)
   -f, --full               Full access mode: danger-full-access sandbox + network enabled
+  -b, --browser            Enable browser MCP servers (agent-browser + spectacles)
   -h, --help               Show this help
 
 Examples:
@@ -71,7 +72,8 @@ Examples:
   bun run src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
   bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"
   bun run src/codex-agent.ts --full "Install deps and implement feature"
-  bun run src/codex-agent.ts --sandbox workspace-write --cwd /repo --add-dir /repo/../data "Cross-dir writes"`;
+  bun run src/codex-agent.ts --sandbox workspace-write --cwd /repo --add-dir /repo/../data "Cross-dir writes"
+  bun run src/codex-agent.ts --browser --cwd /repo "Navigate to site and take screenshot"`;
 
 type ParseResult =
   | {
@@ -84,6 +86,7 @@ type ParseResult =
       timeout: number;
       network: boolean;
       addDirs: string[];
+      browser: boolean;
     }
   | { kind: "help" }
   | { kind: "invalid"; error: string };
@@ -103,6 +106,7 @@ function parseCliArgs(): ParseResult {
         "add-dir": { type: "string", short: "d", multiple: true },
         network: { type: "boolean", short: "n" },
         full: { type: "boolean", short: "f" },
+        browser: { type: "boolean", short: "b" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -162,6 +166,7 @@ function parseCliArgs(): ParseResult {
       timeout,
       network,
       addDirs,
+      browser: values.browser === true,
     };
   } catch (err) {
     return {
@@ -192,9 +197,21 @@ async function runCodex(
   cwd?: string,
   timeout?: number,
   network?: boolean,
-  addDirs?: string[]
+  addDirs?: string[],
+  browser?: boolean
 ): Promise<Output> {
-  const codex = new Codex();
+  // Build config overrides for browser MCP servers
+  const codexOptions: CodexOptions = {};
+  if (browser) {
+    codexOptions.config = {
+      mcp_servers: {
+        "agent-browser": { enabled: true },
+        spectacles: { enabled: true },
+      },
+    };
+  }
+
+  const codex = new Codex(codexOptions);
   const thread = codex.startThread({
     model,
     sandboxMode: sandbox,
@@ -262,7 +279,8 @@ async function main(): Promise<void> {
     args.cwd,
     args.timeout,
     args.network,
-    args.addDirs
+    args.addDirs,
+    args.browser
   );
   output(result);
 }
