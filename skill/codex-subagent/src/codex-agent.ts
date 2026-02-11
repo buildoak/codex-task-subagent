@@ -58,7 +58,8 @@ Options:
   -m, --model <name>       Model string passed directly to Codex (default: gpt-5.3-codex)
   -r, --reasoning <level>  Reasoning effort: minimal, low, medium (default), high, xhigh
   -C, --cwd <dir>          Working directory for Codex
-  -t, --timeout <ms>       Positive timeout in ms (default: 2min/2min/2min/20min/40min by reasoning)
+  -t, --timeout <ms>       Positive timeout in ms (default: 2min/2min/10min/20min/40min by reasoning)
+  -d, --add-dir <path>     Additional writable directory (repeatable, workspace-write only)
   -n, --network            Enable network access (for npm install, web requests, etc.)
   -f, --full               Full access mode: danger-full-access sandbox + network enabled
   -h, --help               Show this help
@@ -69,7 +70,8 @@ Examples:
   bun run src/codex-agent.ts --cwd /path/to/repo "Analyze architecture"
   bun run src/codex-agent.ts -m gpt-5.3-codex -r high "Review for security issues"
   bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"
-  bun run src/codex-agent.ts --full "Install deps and implement feature"`;
+  bun run src/codex-agent.ts --full "Install deps and implement feature"
+  bun run src/codex-agent.ts --sandbox workspace-write --cwd /repo --add-dir /repo/../data "Cross-dir writes"`;
 
 type ParseResult =
   | {
@@ -81,6 +83,7 @@ type ParseResult =
       cwd?: string;
       timeout: number;
       network: boolean;
+      addDirs: string[];
     }
   | { kind: "help" }
   | { kind: "invalid"; error: string };
@@ -97,6 +100,7 @@ function parseCliArgs(): ParseResult {
         reasoning: { type: "string", short: "r" },
         cwd: { type: "string", short: "C" },
         timeout: { type: "string", short: "t" },
+        "add-dir": { type: "string", short: "d", multiple: true },
         network: { type: "boolean", short: "n" },
         full: { type: "boolean", short: "f" },
         help: { type: "boolean", short: "h" },
@@ -122,6 +126,7 @@ function parseCliArgs(): ParseResult {
     const model = values.model || DEFAULT_MODEL;
     const reasoning = (values.reasoning as ModelReasoningEffort) || DEFAULT_REASONING;
     const network = fullMode || values.network === true;
+    const addDirs = (values["add-dir"] as string[] | undefined) ?? [];
 
     let timeout = getDefaultTimeout(reasoning);
     if (values.timeout !== undefined) {
@@ -156,6 +161,7 @@ function parseCliArgs(): ParseResult {
       cwd: values.cwd,
       timeout,
       network,
+      addDirs,
     };
   } catch (err) {
     return {
@@ -185,7 +191,8 @@ async function runCodex(
   reasoning: ModelReasoningEffort,
   cwd?: string,
   timeout?: number,
-  network?: boolean
+  network?: boolean,
+  addDirs?: string[]
 ): Promise<Output> {
   const codex = new Codex();
   const thread = codex.startThread({
@@ -195,6 +202,7 @@ async function runCodex(
     workingDirectory: cwd,
     skipGitRepoCheck: true,
     networkAccessEnabled: network,
+    additionalDirectories: addDirs?.length ? addDirs : undefined,
   });
 
   // Race against timeout
@@ -253,7 +261,8 @@ async function main(): Promise<void> {
     args.reasoning,
     args.cwd,
     args.timeout,
-    args.network
+    args.network,
+    args.addDirs
   );
   output(result);
 }

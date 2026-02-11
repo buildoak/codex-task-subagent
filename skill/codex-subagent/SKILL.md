@@ -104,6 +104,7 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 | `--reasoning` | `-r` | `minimal`, `low`, `medium`, `high`, `xhigh` | `medium` | Higher = deeper analysis, slower, costlier |
 | `--cwd` | `-C` | path | current dir | Point at the repo to analyze |
 | `--timeout` | `-t` | milliseconds | reasoning-scaled | 2min (minimal/low), 10min (medium), 20min (high), 40min (xhigh) |
+| `--add-dir` | `-d` | path (repeatable) | none | Additional writable dirs for `workspace-write` |
 | `--network` | `-n` | boolean | false | Enable network access (npm install, web requests) |
 | `--full` | `-f` | boolean | false | Full access: `danger-full-access` + network enabled |
 
@@ -111,8 +112,11 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 
 - **Review/audit:** Default (read-only, no network)
 - **Write files:** `--sandbox workspace-write`
+- **Cross-directory writes:** `--sandbox workspace-write --add-dir /sibling/path`
 - **Install deps + write:** `--sandbox workspace-write --network`
 - **Full trust:** `--full` (danger-full-access + network)
+
+> **Cross-directory trap:** `workspace-write` restricts writes to the `--cwd` subtree. If Codex needs to write to sibling directories (e.g., both `centerpiece/` and `data/`), either set `--cwd` to the common parent, use `--add-dir` for each extra directory, or use `--full`.
 
 ---
 
@@ -277,9 +281,17 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 
 ## MCP Servers
 
-Codex has Exa configured globally in `~/.codex/config.toml`. This enables web search during tasks when needed.
+Codex has the following MCP servers configured globally in `~/.codex/config.toml`:
 
-**Requirement:** `EXA_API_KEY` must be set in your environment.
+| Server | Purpose | Key Tools |
+|--------|---------|-----------|
+| `exa` | Web search | Exa search API |
+| `agent-browser` | Browser automation | Page navigation, screenshots |
+| `pratchett-docs` | Knowledge base search | `search(query, limit)`, `list_docs(type, status, domain, tag, limit)` |
+| `chats` | ChatGPT history | `search_turns`, `search_conversations`, `get_turn`, `get_conversation_metadata` |
+| `tech-ledger` | Tech mentions | `search_tech`, `get_tech_card`, `list_domains` |
+
+**Requirement:** `EXA_API_KEY` must be set in your environment for Exa. The pratchett-docs, chats, and tech-ledger servers use the pratchett-os venv python.
 
 ---
 
