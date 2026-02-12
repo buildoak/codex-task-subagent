@@ -15,6 +15,7 @@
 
 import { Codex, type CodexOptions, type ModelReasoningEffort, type SandboxMode } from "@openai/codex-sdk";
 import { parseArgs } from "node:util";
+import { resolveClusters, listClusters, ALL_KNOWN_SERVERS } from "/Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/_shared/mcp-clusters.ts";
 
 // --- Types ---
 
@@ -62,8 +63,12 @@ Options:
   -d, --add-dir <path>     Additional writable directory (repeatable, workspace-write only)
   -n, --network            Enable network access (for npm install, web requests, etc.)
   -f, --full               Full access mode: danger-full-access sandbox + network enabled
-  -b, --browser            Enable browser MCP servers (agent-browser + spectacles)
+  -b, --browser            Enable browser MCP cluster (sugar for --mcp-cluster browser)
+      --mcp-cluster <name> Enable an MCP cluster (repeatable). No MCPs enabled by default.
   -h, --help               Show this help
+
+MCP Clusters:
+${listClusters()}
 
 Examples:
   bun run src/codex-agent.ts "What does this repo do?"
@@ -73,7 +78,9 @@ Examples:
   bun run src/codex-agent.ts -r xhigh "Deep analysis of edge cases"
   bun run src/codex-agent.ts --full "Install deps and implement feature"
   bun run src/codex-agent.ts --sandbox workspace-write --cwd /repo --add-dir /repo/../data "Cross-dir writes"
-  bun run src/codex-agent.ts --browser --cwd /repo "Navigate to site and take screenshot"`;
+  bun run src/codex-agent.ts --browser --cwd /repo "Navigate to site and take screenshot"
+  bun run src/codex-agent.ts --mcp-cluster knowledge "Search the knowledge base"
+  bun run src/codex-agent.ts --mcp-cluster browser --mcp-cluster research "Browse and search"`;
 
 type ParseResult =
   | {
@@ -87,6 +94,7 @@ type ParseResult =
       network: boolean;
       addDirs: string[];
       browser: boolean;
+      mcpClusters: string[];
     }
   | { kind: "help" }
   | { kind: "invalid"; error: string };
@@ -107,6 +115,7 @@ function parseCliArgs(): ParseResult {
         network: { type: "boolean", short: "n" },
         full: { type: "boolean", short: "f" },
         browser: { type: "boolean", short: "b" },
+        "mcp-cluster": { type: "string", multiple: true },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -156,6 +165,13 @@ function parseCliArgs(): ParseResult {
       return { kind: "invalid", error: `Invalid reasoning effort: ${reasoning}.` };
     }
 
+    // Collect MCP cluster names
+    const mcpClusters: string[] = (values["mcp-cluster"] as string[] | undefined) ?? [];
+    // --browser is sugar for --mcp-cluster browser
+    if (values.browser === true && !mcpClusters.includes("browser")) {
+      mcpClusters.push("browser");
+    }
+
     return {
       kind: "ok",
       prompt,
@@ -167,6 +183,7 @@ function parseCliArgs(): ParseResult {
       network,
       addDirs,
       browser: values.browser === true,
+      mcpClusters,
     };
   } catch (err) {
     return {
@@ -198,18 +215,28 @@ async function runCodex(
   timeout?: number,
   network?: boolean,
   addDirs?: string[],
-  browser?: boolean
+  mcpClusters?: string[]
 ): Promise<Output> {
-  // Build config overrides for browser MCP servers
-  const codexOptions: CodexOptions = {};
-  if (browser) {
-    codexOptions.config = {
-      mcp_servers: {
-        "agent-browser": { enabled: true },
-        spectacles: { enabled: true },
-      },
-    };
+  // Build MCP config overrides
+  // Strategy: disable ALL known servers from config.toml, then enable only requested clusters
+  const mcpOverride: Record<string, Record<string, unknown>> = {};
+
+  // First: disable all known MCP servers (overrides config.toml auto-loading)
+  for (const name of ALL_KNOWN_SERVERS) {
+    mcpOverride[name] = { enabled: false };
   }
+
+  // Then: enable only servers from requested clusters
+  if (mcpClusters && mcpClusters.length > 0) {
+    const resolved = resolveClusters(mcpClusters);
+    for (const [name, config] of Object.entries(resolved)) {
+      mcpOverride[name] = { enabled: true, ...config };
+    }
+  }
+
+  const codexOptions: CodexOptions = {
+    config: { mcp_servers: mcpOverride },
+  };
 
   const codex = new Codex(codexOptions);
   const thread = codex.startThread({
@@ -280,7 +307,7 @@ async function main(): Promise<void> {
     args.timeout,
     args.network,
     args.addDirs,
-    args.browser
+    args.mcpClusters
   );
   output(result);
 }

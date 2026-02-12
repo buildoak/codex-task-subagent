@@ -107,7 +107,8 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 | `--add-dir` | `-d` | path (repeatable) | none | Additional writable dirs for `workspace-write` |
 | `--network` | `-n` | boolean | false | Enable network access (npm install, web requests) |
 | `--full` | `-f` | boolean | false | Full access: `danger-full-access` + network enabled |
-| `--browser` | `-b` | boolean | false | Enable browser MCP servers (agent-browser + spectacles) |
+| `--browser` | `-b` | boolean | false | Enable browser MCP cluster (sugar for `--mcp-cluster browser`) |
+| `--mcp-cluster` | — | string (repeatable) | none | Enable an MCP cluster. No MCPs by default. |
 
 ### Quick Mode Selection
 
@@ -116,7 +117,10 @@ bun run /Users/otonashi/thinking/pratchett-os/centerpiece/.claude/skills/codex-s
 - **Cross-directory writes:** `--sandbox workspace-write --add-dir /sibling/path`
 - **Install deps + write:** `--sandbox workspace-write --network`
 - **Full trust:** `--full` (danger-full-access + network)
-- **Browser tasks:** `--browser` (enables agent-browser + spectacles MCPs)
+- **Browser tasks:** `--browser` or `--mcp-cluster browser`
+- **Knowledge base:** `--mcp-cluster knowledge` (pratchett-docs, chats, tech-ledger)
+- **Web search:** `--mcp-cluster research` (Exa)
+- **Everything:** `--mcp-cluster all`
 - **Browser + write:** `--browser --sandbox workspace-write`
 
 > **Cross-directory trap:** `workspace-write` restricts writes to the `--cwd` subtree. If Codex needs to write to sibling directories (e.g., both `centerpiece/` and `data/`), either set `--cwd` to the common parent, use `--add-dir` for each extra directory, or use `--full`.
@@ -282,27 +286,31 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 
 ---
 
-## MCP Servers
+## MCP Clusters
 
-Codex has the following MCP servers configured globally in `~/.codex/config.toml`:
+**No MCP servers are enabled by default.** Use `--mcp-cluster` to opt in. All servers from `~/.codex/config.toml` are overridden to disabled unless explicitly requested.
 
-**Always enabled:**
+| Cluster | Servers | Key Tools |
+|---------|---------|-----------|
+| `browser` | agent-browser, spectacles | Browser automation (Playwright), visual verification |
+| `knowledge` | pratchett-docs, chats, tech-ledger | Knowledge base search, ChatGPT history, tech mentions |
+| `research` | exa | Exa semantic web search |
+| `all` | All of the above | Everything |
 
-| Server | Purpose | Key Tools |
-|--------|---------|-----------|
-| `exa` | Web search | Exa search API |
-| `pratchett-docs` | Knowledge base search | `search(query, limit)`, `list_docs(type, status, domain, tag, limit)` |
-| `chats` | ChatGPT history | `search_turns`, `search_conversations`, `get_turn`, `get_conversation_metadata` |
-| `tech-ledger` | Tech mentions | `search_tech`, `get_tech_card`, `list_domains` |
+```bash
+# Enable knowledge base
+bun run src/codex-agent.ts --mcp-cluster knowledge "Search pratchett-docs for..."
 
-**Enabled via `--browser` flag (disabled by default):**
+# Enable multiple clusters
+bun run src/codex-agent.ts --mcp-cluster browser --mcp-cluster knowledge "Browse and search"
 
-| Server | Purpose | Key Tools |
-|--------|---------|-----------|
-| `agent-browser` | Browser automation (Playwright) | `browser_navigate`, `browser_click`, `browser_screenshot`, `browser_fill`, etc. |
-| `spectacles` | Visual verification pipeline | `spectacles_capture`, `spectacles_anchor`, `spectacles_verify`, `spectacles_extract_dna` |
+# Enable everything
+bun run src/codex-agent.ts --mcp-cluster all "Full MCP access"
+```
 
-**Requirement:** `EXA_API_KEY` must be set in your environment for Exa. The pratchett-docs, chats, and tech-ledger servers use the pratchett-os venv python.
+**Note:** `--browser` remains as sugar for `--mcp-cluster browser`.
+
+**Requirement:** `EXA_API_KEY` must be set in your environment for the research cluster. The knowledge cluster servers use the pratchett-os venv python.
 
 ---
 
