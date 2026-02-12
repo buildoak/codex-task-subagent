@@ -266,16 +266,100 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 
 ---
 
+## Prompting Codex Effectively
+
+Codex (GPT-5.3) has fundamentally different prompting needs than Claude. These lessons come from real failures and official OpenAI guidance.
+
+### Core Principle: Focused, Scoped, Explicit
+
+Codex operates in a sandbox with finite context. Every token spent reading files is a token NOT spent writing output. Structure every prompt to minimize exploration and maximize output.
+
+**The golden rule:** Tell Codex WHAT to read, WHAT to check, and WHERE to write. Never say "explore" or "audit everything."
+
+### Prompt Structure That Works
+
+1. **State the goal in one sentence** -- "Check src/auth/jwt.ts for token expiration bugs"
+2. **List specific files to read** -- "Read these files: src/auth/jwt.ts, src/auth/middleware.ts"
+3. **Define the output format** -- "Write findings to _workbench/agent-comms/auth-review.md"
+4. **Constrain the scope** -- "Focus only on token lifecycle, ignore unrelated code"
+
+### What Works
+
+- **Batch file reads in parallel** -- Codex excels when it reads all needed files in one parallel call, not sequentially
+- **Bias toward action** -- Frame tasks as "deliver working code, not just a plan". Codex stops prematurely if asked to plan first
+- **Prefer tools over shell commands** -- Codex is trained to use `read_file`, `apply_patch`, `rg` (search), not raw terminal commands
+- **One clear deliverable per invocation** -- "Implement X" or "Review Y", not "Implement X and also review Y and then refactor Z"
+- **Explicit output path** -- Always include "Write your output/findings to [specific path]" in the prompt
+- **LOC limits and style constraints** -- "Keep changes under 50 lines, match existing patterns" prevents scope creep
+
+### What Fails (Anti-Patterns from Real Experience)
+
+- **"Audit the entire codebase"** -- Burns all tokens reading files, produces nothing. Codex reads everything, runs out of context
+- **"Read all files and design architecture"** -- Too exploratory. Codex is an executor, not a planner
+- **"Explore the directory structure"** -- Wastes tokens on `ls` and `find`. List the files yourself
+- **Upfront planning announcements** -- Prompting Codex to communicate its plan causes premature stopping. Remove instructions like "first explain your approach"
+- **Vague scope** -- "Look for issues" without specifying what kind or where
+- **Multi-goal prompts** -- Codex handles one goal well; multiple goals cause partial completion
+- **Sequential file reads** -- Reading files one-by-one wastes turns. Batch reads in parallel
+
+### Token Budget Awareness
+
+- Codex has a finite context window. Every file read consumes tokens
+- List specific files in the prompt instead of saying "find relevant files"
+- For large files, specify which sections matter: "Read lines 1-100 of config.ts"
+- If the task requires reading 10+ files, break it into multiple Codex invocations
+- Use `--reasoning medium` for routine tasks to preserve token budget for actual work
+
+### Prompt Templates
+
+**Focused Review:**
+```
+Read src/auth/jwt.ts and src/auth/session.ts.
+Check for: (1) token expiration handling, (2) refresh token rotation, (3) session invalidation.
+Write a bullet-point summary of findings to _workbench/agent-comms/auth-review.md.
+```
+
+**Scoped Implementation:**
+```
+Read the interface in src/types/preferences.ts and the existing handler pattern in src/api/users.ts.
+Implement a new handler src/api/preferences.ts that follows the same pattern.
+Include input validation and error handling matching existing conventions.
+```
+
+**Targeted Bug Hunt:**
+```
+The test in tests/parser.test.ts line 42 fails intermittently.
+Read tests/parser.test.ts and src/parser/index.ts.
+Identify the race condition or state leak causing the flake.
+Write the diagnosis and fix to _workbench/agent-comms/parser-fix.md.
+```
+
+### Comparison: Claude vs Codex Prompting
+
+| Aspect | Claude (Opus) | Codex (GPT-5.3) |
+|--------|--------------|-----------------|
+| Exploration | Handles open-ended well | Needs tight scope |
+| File discovery | Can explore and find files | List files explicitly |
+| Multi-step planning | Excels at it | Skip planning, go to action |
+| Output location | Figures it out | Must be told explicitly |
+| Token awareness | Large context, flexible | Budget-conscious, minimize reads |
+| Preambles | Handles "explain then do" | Remove planning preambles |
+
+---
+
 ## Anti-Patterns
 
 **DON'T:**
 - Use `danger-full-access` for review tasks (read-only suffices)
-- Send vague "analyze everything" prompts (scope it)
+- Send vague "analyze everything" prompts (scope it -- see Prompting section above)
 - Trust Codex output blindly (validate high-impact findings)
 - Use `xhigh` for trivial checks (waste of compute)
 - Run mutation prompts without VCS safeguards
 - Expect Codex to remember previous interactions
 - Skip `--cwd` (Codex needs to know where to look)
+- Ask Codex to "explore" or "discover" -- list what it should read
+- Include planning preambles -- they cause premature stopping
+- Send multi-goal prompts -- one deliverable per invocation
 
 **DO:**
 - Always specify `--cwd` pointing to the repo
@@ -283,6 +367,9 @@ This is the **validated 10x pattern** from digital-employee-day: Codex generates
 - Increase `--reasoning` for security-sensitive code
 - Parse JSON output and synthesize with Claude's view
 - Use for focused, well-scoped tasks with clear deliverables
+- Tell Codex exactly which files to read and where to write output
+- Batch file reads in parallel, never sequential
+- Frame tasks as action, not analysis -- "fix X" not "investigate X"
 
 ---
 
